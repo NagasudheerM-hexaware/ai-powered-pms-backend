@@ -1,0 +1,14 @@
+{
+    "azureFunctions.deploySubpath": "ai-powered-pms-backend-main",
+    "azureFunctions.postDeployTask": "npm install (functions)",
+    "azureFunctions.projectLanguage": "JavaScript",
+    "azureFunctions.projectRuntime": "~4",
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.preDeployTask": "npm prune (functions)",
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/390bd210-33e0-4b8f-b7d6-764938e92b79/resourceGroups/TeamInTune_RG/providers/Microsoft.Web/sites/ai-powered-pms-backend",
+    "appService.deploySubpath": "ai-powered-pms-backend-main"
+}

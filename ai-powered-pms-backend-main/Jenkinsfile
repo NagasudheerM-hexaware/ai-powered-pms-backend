@@ -1,0 +1,119 @@
+
+// This is a sample Jenkinsfile. It will not work as is without configuring jenkins
+pipeline {
+  agent any
+
+  environment {
+    AZURE_CREDENTIALS_STAGING = credentials('azure-credentials-staging')
+    AZURE_CREDENTIALS_PROD = credentials('azure-credentials-prod')
+    CONTAINER_REGISTRY = 'your_container_registry_name'
+    STAGING_FUNCTION_APP = 'your_staging_function_app_name'
+    PROD_FUNCTION_APP = 'your_prod_function_app_name'
+    POSTMAN_COLLECTION = 'your_postman_collection_file'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        sh 'npm ci'
+      }
+    }
+
+    stage('Run unit and integration tests') {
+      steps {
+        sh 'npm test'
+      }
+      post {
+        always {
+          junit '**/test-results.xml'
+          cobertura autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: '**/coverage.xml', conditionalCoverageTargets: '70, 0, 0', failUnhealthy: true, failUnstable: false, lineCoverageTargets: '80, 0, 0', maxNumberOfBuilds: 0, methodCoverageTargets: '80, 0, 0', onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false
+        }
+      }
+    }
+
+    stage('Build and push Docker image') {
+      when {
+        not {
+          changeRequest target: 'main'
+        }
+      }
+      steps {
+        script {
+          def commitHash = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+          env.IMAGE_TAG = "${CONTAINER_REGISTRY}/your_microservice:${commitHash}"
+        }
+
+        sh 'docker build -t ${IMAGE_TAG} .'
+        withCredentials([usernamePassword(credentialsId: 'azure-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+          sh 'echo "${DOCKER_PASSWORD}" | docker login ${CONTAINER_REGISTRY} -u ${DOCKER_USERNAME} --password-stdin'
+          sh 'docker push ${IMAGE_TAG}'
+        }
+      }
+    }
+
+    stage('Deploy to Staging') {
+      when {
+        not {
+          changeRequest target: 'main'
+        }
+      }
+      steps {
+        azureCLI commands: [[exportVariablesString: '', script: '''
+          az login --service-principal -u $AZURE_CREDENTIALS_STAGING_USR -p $AZURE_CREDENTIALS_STAGING_PSW --tenant $AZURE_CREDENTIALS_STAGING_TENANT
+          az functionapp config container set --name ${STAGING_FUNCTION_APP} --docker-custom-image-name ${IMAGE_TAG} --docker-registry-server-url https://${CONTAINER_REGISTRY}.azurecr.io --docker-registry-server-password $AZURE_CREDENTIALS_STAGING_PSW --docker-registry-server-user $AZURE_CREDENTIALS_STAGING_USR --resource-group your_resource_group
+        ''']]
+      }
+    }
+
+    stage('API tests') {
+      when {
+        not {
+          changeRequest target: 'main'
+        }
+      }
+      steps {
+        sh 'npm install -g newman'
+        sh 'newman run ${POSTMAN_COLLECTION} --environment staging.postman_environment.json'
+      }
+    }
+
+        stage('Deploy to Production') {
+      when {
+        not {
+          changeRequest target: 'main'
+        }
+      }
+      steps {
+        script {
+          env.SLOT_NAME = sh(returnStdout: true, script: '''
+            az login --service-principal -u $AZURE_CREDENTIALS_PROD_USR -p $AZURE_CREDENTIALS_PROD_PSW --tenant $AZURE_CREDENTIALS_PROD_TENANT
+            az functionapp deployment slot list -g your_resource_group -n ${PROD_FUNCTION_APP} --query "[?status=='Running'].name" -o tsv
+          ''').trim()
+
+          env.INACTIVE_SLOT_NAME = env.SLOT_NAME == 'blue' ? 'green' : 'blue'
+        }
+
+        azureCLI commands: [[exportVariablesString: '', script: '''
+          az functionapp config container set --name ${PROD_FUNCTION_APP} --slot ${INACTIVE_SLOT_NAME} --docker-custom-image-name ${IMAGE_TAG} --docker-registry-server-url https://${CONTAINER_REGISTRY}.azurecr.io --docker-registry-server-password $AZURE_CREDENTIALS_PROD_PSW --docker-registry-server-user $AZURE_CREDENTIALS_PROD_USR --resource-group your_resource_group
+        ''']]
+
+        script {
+          env.ACTIVE_SLOT_HOSTNAME = sh(returnStdout: true, script: '''
+            az functionapp deployment slot swap -g your_resource_group -n ${PROD_FUNCTION_APP} --slot ${SLOT_NAME} --target-slot ${INACTIVE_SLOT_NAME} --query targetSlot.siteHostName -o tsv
+          ''').trim()
+        }
+      }
+    }
+  }
+  post {
+    always {
+      cleanWs()
+    }
+  }
+}
