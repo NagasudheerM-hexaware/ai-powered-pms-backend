@@ -1,7 +1,7 @@
 const KRAModel = require('../models/kraModel');
 
-exports.getKRAs = async () => {
-  const kraData = await KRAModel.find();
+exports.getKRAs = async (query) => {
+  const kraData = await KRAModel.find(query);
   return kraData;
 };
 

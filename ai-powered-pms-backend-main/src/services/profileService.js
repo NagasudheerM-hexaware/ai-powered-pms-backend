@@ -1,7 +1,18 @@
 const ProfileModel = require('../models/profileModel');
 
-exports.getProfiles = async (query) => {
+exports.getProfiles = async (req,query) => {
   const profileData = await ProfileModel.find(query);
+
+  if (req.query.goal_type) {
+    profileData.forEach(profile => {
+        profile.goals = profile.goals.filter(goal => goal.goalType === req.query.goal_type);
+    });
+
+    return profileData;
+}
+
+  
+
   return profileData;
 };
 

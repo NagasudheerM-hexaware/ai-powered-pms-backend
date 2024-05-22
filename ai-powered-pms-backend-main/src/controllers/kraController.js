@@ -1,9 +1,12 @@
 const kraService = require('../services/kraService');
 const messageBuilder = require("../utils/message_builder");
+const queryCreator = require("../utils/queryCreator");
 
 exports.getKRAs = async (req, res, next) => {
   try {
-    const result = await kraService.getKRAs();
+    var query = req.query ? req.query : undefined;
+    const createdQuery = queryCreator(query);
+    const result = await kraService.getKRAs(createdQuery);
     res.status(200).json(messageBuilder(result, false, "KRAs retrieved successfully"));
   } catch (error) {
     next(error);

@@ -6,7 +6,7 @@ exports.getProfiles = async (req, res, next) => {
   try {
     var query = req.query ? req.query : undefined;
     const createdQuery = queryCreator(query);
-    const result = await profileService.getProfiles(createdQuery);
+    const result = await profileService.getProfiles(req,createdQuery);
     res.status(200).json(messageBuilder(result, false, "Profiles retrieved successfully"));
   } catch (error) {
     next(error);

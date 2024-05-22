@@ -15,6 +15,7 @@ const AppraisalCycleSchema = new mongoose.Schema({
 });
 const GoalSchema = new mongoose.Schema({
   goalId: { type: String },
+  goalType: { type: String },
   empComment: { type: String },
   empRating: { type: Number },
   mgrComment: { type: String },
