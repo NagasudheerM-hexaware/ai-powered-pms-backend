@@ -33,6 +33,7 @@ const EmployeeSchema = new mongoose.Schema({
   employeeId: { type: String, required: true },
   displayName: { type: String },
   userPrincipalName: { type: String },
+  image: { type: String },
   mail: { type: String},
   jobTitle: { type: String },
   departmentId: { type: String },
@@ -44,7 +45,7 @@ const EmployeeSchema = new mongoose.Schema({
     type: AppraisalCycleSchema,
     required: true,
   },
-  currentStatus: { type: String }, // Example: Active, On Leave, etc.
+  currentStatus: { type: String,enums: ['Goals Setting', 'Emp. Self Eval.', 'Confirm Review Meeting Held', 'Man. Eval.', 'Share Performance Doc', 'Acknowledge of Perf. Doc'], default: 'Goals Setting'}, 
   final_rating: { type: Number,default:null }, // Current performance rating
   history: [PerformanceHistorySchema], // Array of performance history objects
   goals: [GoalSchema]
