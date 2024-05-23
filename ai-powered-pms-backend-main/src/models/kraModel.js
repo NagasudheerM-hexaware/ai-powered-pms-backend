@@ -7,7 +7,7 @@ const KRAEntrySchema = new mongoose.Schema({
     default: uuidv4,
   },
   //goalId: { type: String, default: uuidv4 },
-  type: { type: String, enum: ["behavioural", "technical"], required: true },
+  type: { type: String, enum: ["behavioral", "technical"], required: true },
   title: { type: String, required: true },
   description: String,
   KPIs: [String], // Assuming multiple KPIs are stored as an array of strings
